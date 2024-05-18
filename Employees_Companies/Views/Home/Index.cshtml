@@ -1,0 +1,267 @@
+﻿
+@{
+    ViewData["Title"] = "Index";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+   
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+</head>
+<body>
+    <style>
+        button {
+            margin: 0 10px;
+        }
+    </style>
+    <h2>Employee redactor:</h2>
+    <br/>
+    <div>
+        <input type="hidden" id="employee_id" />
+        <label>Name: <input id="employee_name" class="mb-3" /></label>
+        <label>Age: <input id="employee_age" class="mb-3" type="number" /></label>
+        <label>
+            Company:
+            <select class="form-select" id="employee_company">
+               
+            </select>
+        </label>
+        <button class="btn btn-outline-success" id="btn_save">Save</button>
+        <button class="btn btn-outline-secondary" id="btn_reset">Reset</button>
+        <br />
+        <br />
+        <label>
+            Select by Company:
+            <select class="form-select" id="employee_company_select">
+                <option value="all_companies">все компании</option>
+                
+            </select>
+        </label>
+        <br/>
+
+        <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Company</th>
+            </tr>
+         </thead>
+        <br />
+        <br />
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+
+      
+
+    async function getEmployees() {
+            const response = await fetch("/Home/GetEmpl", {
+        method: "GET",
+    headers: {"Accept": "application/json" }
+            });
+        if (response.ok === true) {
+            const employees = await response.json();
+            console.log(employees);
+            const rows = document.querySelector("tbody");
+            const selectCompany = document.getElementById("employee_company_select");
+            const employeeCompany = document.getElementById("employee_company");
+            employees.forEach(employee => rows.append(createRow(employee)));  
+           // employees.forEach(employee => companies.push(employee.companyTitle));
+            const companies = [];
+                    const companyResponse = await fetch("/Company/GetCompanies", {
+                        method: "GET",
+                        headers: { "Accept": "application/json" }
+                    });
+                    if (companyResponse.ok === true) {
+                        //console.log("response.jok");
+                         const compData = await companyResponse.json();
+                        compData.forEach(c => {
+                            console.log(c.companyTitle);
+                            companies.push(c);
+                        });
+                    }
+                   
+            
+           // const unicCompanies = companies.filter((str, index) => companies.indexOf(str) === index);
+            companies.forEach(c => {
+                employeeCompany.append(addCompanyOption(c));
+                selectCompany.append(addCompanyOption(c));
+            }
+            );      
+       }
+    }
+
+    async function getEmployeesCompany(company) {
+       const response = await fetch(`/Home/GetEmplsCompany?company=${company}`, {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+       });
+       if (response.ok === true) {
+           const employees = await response.json();
+           console.log(employees);
+           const rows = document.querySelector("tbody");
+           const selectCompany = document.getElementById("employee_company");
+           employees.forEach(employee => rows.append(createRow(employee)));
+       }
+    }
+
+    function addCompanyOption(company) {
+        let option = document.createElement("option");
+        option.value = company.companyTitle;
+        option.text = company.companyTitle;
+        //option.addEventListener("click", getEmployeesCompany(option.value));
+        return option;
+    }
+
+    async function getEmployee(id) {
+        console.log('button edit');
+            const response = await fetch(`/Home/GetEmpl?id=${id}`, {
+        method: "GET",
+    headers: {"Accept": "application/json"}
+            });
+    if (response.ok === true) {
+        const employee = await response.json();
+                console.log(employee);
+        document.getElementById("employee_id").value = employee[0].id;
+        document.getElementById("employee_name").value = employee[0].name;
+        document.getElementById("employee_age").value = employee[0].age;
+        document.getElementById("employee_company").value = employee[0].companyTitle;
+    }
+    else {
+        const error = await response.json();
+        console.log(error.message);
+    }
+    }
+
+    async function createEmployee(employee_name, employee_age, employee_company) {
+            const response = await fetch("Home/PostEmpl", {
+        method: "POST",
+        headers: {"Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+                    Name: employee_name,
+                    Age: parseInt(employee_age, 10),
+                    CompanyTitle: employee_company
+                })
+        });
+    if (response.ok === true) {
+        const employee = await response.json();
+        console.log(employee);
+        document.querySelector("tbody").append(createRow(employee));
+    }
+    else {
+        console.log("response is not ok");
+        const error = await response.json();
+        console.log(error.message);
+    }
+    }
+
+    async function editEmployee(employee_id, employee_name, employee_age, employee_company) {
+    const response = await fetch("Home/PutEmpl", {
+        method: "PUT",
+        headers: {"Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+            Id: employee_id,
+            Name: employee_name,
+            Age: parseInt(employee_age, 10),
+            CompanyTitle: employee_company
+            })
+            });
+    if (response.ok === true) {
+        const employee = await response.json();
+        document.querySelector(`tr[data-rowid='${employee.id}']`).replaceWith(createRow(employee));
+    }
+    else {
+        const error = await response.json();
+        console.log(error.message);
+    }
+    }
+
+    async function deleteEmployee(id) {
+            const response = await fetch(`/Home/DeleteEmpl/${id}`, {
+        method: "DELETE",
+    headers: {"Accept": "application/json" }
+            });
+    if (response.ok === true) {
+        const employee = await response.json();
+        document.querySelector(`tr[data-rowid='${employee.id}']`).remove();
+            }
+    else {
+        const error = await response.json();
+        console.log(error.message);
+    }
+    }
+
+    function reset() {
+        document.getElementById("employee_id").value = "";
+        document.getElementById("employee_name").value = "";
+        document.getElementById("employee_age").value = "";
+        }
+
+    function createRow(employee) {
+    let tr = document.createElement("tr");
+    tr.setAttribute("data-rowid", employee.id);
+
+    let td_name = document.createElement("td");
+    td_name.append(employee.name);
+    tr.append(td_name);
+
+    let td_age = document.createElement("td");
+    td_age.append(employee.age);
+    tr.append(td_age);
+
+    let td_company = document.createElement("td");
+    td_company.append(employee.companyTitle);
+    tr.append(td_company);
+
+    let td_btns = document.createElement("td");
+    let btn_edit = document.createElement("button");
+    btn_edit.classList = "btn btn-outline-warning";
+    btn_edit.append("Edit");
+    btn_edit.addEventListener("click", async () => await getEmployee(employee.id));
+    td_btns.append(btn_edit);
+    let btn_delete = document.createElement("button");
+    btn_delete.append("Delete");
+    btn_delete.classList = "btn btn-outline-danger";
+    btn_delete.addEventListener("click", async () => await deleteEmployee(employee.id));
+    td_btns.append(btn_delete);
+    tr.append(td_btns);
+    return tr;
+        }
+
+    document.getElementById("btn_reset").addEventListener("click", () => reset());
+
+    document.getElementById("btn_save").addEventListener("click", async () => {
+    const id = document.getElementById("employee_id").value;
+    const name = document.getElementById("employee_name").value;
+    const age = document.getElementById("employee_age").value;
+    const company = document.getElementById("employee_company").value;
+                if (id === "") {
+            console.log(name + age);
+            await createEmployee(name, age, company);
+        }
+
+        else {      
+            await editEmployee(id, name, age, company);
+        }
+        reset();
+        });
+
+    getEmployees();
+
+    let select = document.getElementById("employee_company_select"); 
+    console.log(select.value);
+        select.addEventListener("change", () => {
+            let table = document.querySelector("tbody"); 
+            table.innerHTML = "";       
+            getEmployeesCompany(select.value);
+            console.log(select.value) });
+</script>
+</body>
+</html>
+

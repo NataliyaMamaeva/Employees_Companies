@@ -1,0 +1,185 @@
+﻿@{
+    ViewData["Title"] = "CompanyIndex";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style>
+        button {
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>List companies:</h2>
+    <div>
+        <input type="hidden" id="company_id" />
+        <label>Titile: <input id="company_title" class="mb-3" /></label>
+        <label>City: <input id="company_city" class="mb-3" /></label>
+       
+        <button class="btn btn-outline-success" id="btn_save">Save</button>
+        <button class="btn btn-outline-secondary" id="btn_reset">Reset</button>
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>City</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+
+        async function getCompanies() {
+            const response = await fetch("/Company/GetCompanies", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+
+            if (response.ok === true) {     
+                const companies = await response.json();
+                console.log(companies);
+                const rows = document.querySelector("tbody");
+                companies.forEach(company => rows.append(createRow(company)));
+            }
+        }
+        async function getCompany(id) {
+            console.log('button edit');
+            const response = await fetch(`/Company/GetCompanies?id=${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const company = await response.json();
+                console.log(company);
+                document.getElementById("company_id").value = company[0].id;
+                document.getElementById("company_title").value = company[0].companyTitle;
+                document.getElementById("company_city").value = company[0].city;
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function createCompany(company_title, company_city) {
+            const response = await fetch("PostCompany", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    CompanyTitle: company_title,
+                    City: company_city
+                })
+            });
+            if (response.ok === true) {
+
+                const company = await response.json();
+                console.log(company);
+                document.querySelector("tbody").append(createRow(company));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function editCompany(company_id, company_title, company_city) {
+            const response = await fetch("PutCompany", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    Id: company_id,
+                    CompanyTitle: company_title,
+                    City: company_city
+                })
+            });
+            if (response.ok === true) {
+                const company = await response.json();
+                document.querySelector(`tr[data-rowid='${company.id}']`).replaceWith(createRow(company));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function deleteCompany(id) {
+            const response = await fetch(`DeleteCompany/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const company = await response.json();
+                document.querySelector(`tr[data-rowid='${company.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        function reset() {
+            document.getElementById("company_id").value = "";
+            document.getElementById("company_title").value = "";
+            document.getElementById("company_city").value = "";
+        }
+
+        function createRow(company) {
+            let tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", company.id);
+
+            let td_title = document.createElement("td");
+            td_title.append(company.companyTitle);
+            tr.append(td_title);
+
+            let td_city = document.createElement("td");
+            td_city.append(company.city);
+            tr.append(td_city);
+
+            let td_btns = document.createElement("td");
+
+            let btn_edit = document.createElement("button");
+            btn_edit.append("Edit");
+            btn_edit.classList = "btn btn-outline-warning";
+            btn_edit.addEventListener("click", async () => await getCompany(company.id));
+            td_btns.append(btn_edit);
+
+            let btn_delete = document.createElement("button");
+            btn_delete.append("Delete");
+            btn_delete.classList = "btn btn-outline-danger";
+            btn_delete.addEventListener("click", async () => await deleteCompany(company.id));
+            td_btns.append(btn_delete);
+
+            tr.append(td_btns);
+
+            return tr;
+        }
+
+        document.getElementById("btn_reset").addEventListener("click", () => reset());
+
+        document.getElementById("btn_save").addEventListener("click", async () => {
+            const id = document.getElementById("company_id").value;
+            const title = document.getElementById("company_title").value;
+            const city = document.getElementById("company_city").value;
+
+            if (id === "") {
+                console.log(title + city);
+                await createCompany(title, city);
+            }
+
+            else {
+                await editCompany(id, title, city);
+            }
+            reset();
+        });
+
+        getCompanies();
+    </script>
+</body>
+</html>
+
